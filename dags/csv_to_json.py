@@ -6,8 +6,8 @@ from airflow.operators.python import PythonOperator
 from datetime import datetime
 
 
-CSV_FILE_PATH = "STOCK_LIST.csv"
-JSON_FILE_PATH = "STOCK_LIST.json"
+CSV_FILE_PATH = "/opt/airflow/dags/STOCK_LIST.csv"
+JSON_FILE_PATH = "/opt/airflow/dags/STOCK_LIST.json"
 
 def csv_to_json():
     """CSV 데이터를 읽어 JSON 형식으로 변환"""
