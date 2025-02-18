@@ -101,7 +101,21 @@ services:
       EBEAN_DATASOURCE_DRIVER: org.postgresql.Driver
       EBEAN_DATASOURCE_HOST: datahub-pg:5432
       EBEAN_DATASOURCE_URL: jdbc:postgresql://datahub-postgres:5432/datahub-pg
+  
+  # PostgreSQL for sub
+  sub-postgres:
+    image: postgres:13
+    container_name: sub-postgres
+    environment:
+      POSTGRES_USER: sub
+      POSTGRES_PASSWORD: sub
+      POSTGRES_DB: sub-pg
+    ports:
+      - "5434:5432"
+    volumes:
+      - sub-postgres-data:/var/lib/postgresql/data
 
 volumes:
   airflow-postgres-data:
   datahub-postgres-data:
+  sub-postgres-data:
