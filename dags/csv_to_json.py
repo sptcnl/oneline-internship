@@ -50,6 +50,34 @@ def csv_to_json():
     
     print(f"JSON data saved to {JSON_FILE_PATH}")
 
+def preprocess_and_store_to_postgres():
+    """JSON 데이터를 전처리하고 PostgreSQL에 저장"""
+    if not os.path.exists(JSON_FILE_PATH):
+        raise FileNotFoundError(f"JSON file not found at {JSON_FILE_PATH}")
+
+    # JSON 파일 읽기
+    with open(JSON_FILE_PATH, "r") as json_file:
+        data = json.load(json_file)
+
+    # 데이터프레임으로 변환 및 전처리 (예: 특정 열 필터링)
+    ## 필요한 키만 추출
+    filtered_data = [
+        {key: item[key] for key in ['isu_cd', 'isu_kor_nm', 'market_code'] if key in item}
+        for item in data
+    ]
+
+    df = pd.DataFrame(filtered_data)
+
+    # PostgreSQL 데이터베이스 연결
+    engine = create_engine('postgresql://postgres:1234@stock:5432/stock')
+
+    # PostgreSQL에 저장
+    with engine.connect() as connection:
+        df.to_sql('kr_stock_list', con=connection, if_exists='replace', index=False)
+        result = connection.execute("SELECT 'Connection successful!'")
+        print(result.scalar())
+
+
 # 기본 DAG 설정
 default_args = {
     'owner': 'airflow',
@@ -73,4 +101,9 @@ with DAG(
         python_callable=csv_to_json,
     )
 
-convert_csv_to_json
+    process_and_store_task = PythonOperator(
+        task_id='process_json_and_store_to_postgres',
+        python_callable=preprocess_and_store_to_postgres,
+    )
+
+convert_csv_to_json >> process_and_store_task
