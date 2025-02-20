@@ -7,6 +7,9 @@ from airflow.operators.python import PythonOperator
 from datetime import datetime
 import requests
 from sqlalchemy import create_engine
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 CSV_FILE_PATH = "/opt/airflow/dags/STOCK_LIST.csv"
@@ -96,8 +99,9 @@ market_divisions = [
 # 카테고리 생성 함수
 def create_categories():
     DATAHUB_API_URL = "http://datahub-datahub-gms-1:8080/api/graphql"
+    DATAHUB_ACCESS_TOKEN = os.getenv('DATAHUB_ACCESS_TOKEN')
     HEADERS = {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhY3RvclR5cGUiOiJVU0VSIiwiYWN0b3JJZCI6ImRhdGFodWIiLCJ0eXBlIjoiUEVSU09OQUwiLCJ2ZXJzaW9uIjoiMiIsImp0aSI6ImVmYzdhMmUwLTkxMzctNDg5Ny1iOGJiLWE0MThlZjQ5OGEzZSIsInN1YiI6ImRhdGFodWIiLCJleHAiOjE3NDAwMzA5MjEsImlzcyI6ImRhdGFodWItbWV0YWRhdGEtc2VydmljZSJ9.CB1djO8q7qBGsLRGylNcjqyaRfDaJ5kDi7n9UtPeRWs",  # Replace <my-access-token> with your actual token
+        "Authorization": "Bearer ",
         "Content-Type": "application/json"
     }
     categories = []
