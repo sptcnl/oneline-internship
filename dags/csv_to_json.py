@@ -1,9 +1,11 @@
 import os
+import re
 import pandas as pd
 import json
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime
+import requests
 from sqlalchemy import create_engine
 
 
@@ -62,7 +64,7 @@ def preprocess_and_store_to_postgres():
     # 데이터프레임으로 변환 및 전처리 (예: 특정 열 필터링)
     ## 필요한 키만 추출
     filtered_data = [
-        {key: item[key] for key in ['isu_cd', 'isu_kor_nm', 'market_code'] if key in item}
+        {key: item[key] for key in ['isu_cd', 'isu_kor_nm', 'market_code', 'market_division'] if key in item}
         for item in data
     ]
 
@@ -77,6 +79,54 @@ def preprocess_and_store_to_postgres():
         result = connection.execute("SELECT 'Connection successful!'")
         print(result.scalar())
 
+# market_code와 market_division 정의
+market_codes = ["KOSPI", "KONEX", "KOSDAQ", "KOSDAQ GLOBAL"]
+market_divisions = [
+    "일반기업부",
+    "중견기업부",
+    "우량기업부",
+    "벤처기업부",
+    "기술성장기업부",
+    "관리종목(소속부없음)",
+    "SPAC(소속부없음)",
+    "외국기업(소속부없음)",
+    "투자주의환기종목(소속부없음)"
+]
+
+# 카테고리 생성 함수
+def create_categories():
+    DATAHUB_API_URL = "http://datahub-datahub-gms-1:8080/api/graphql"
+    HEADERS = {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhY3RvclR5cGUiOiJVU0VSIiwiYWN0b3JJZCI6ImRhdGFodWIiLCJ0eXBlIjoiUEVSU09OQUwiLCJ2ZXJzaW9uIjoiMiIsImp0aSI6ImVmYzdhMmUwLTkxMzctNDg5Ny1iOGJiLWE0MThlZjQ5OGEzZSIsInN1YiI6ImRhdGFodWIiLCJleHAiOjE3NDAwMzA5MjEsImlzcyI6ImRhdGFodWItbWV0YWRhdGEtc2VydmljZSJ9.CB1djO8q7qBGsLRGylNcjqyaRfDaJ5kDi7n9UtPeRWs",  # Replace <my-access-token> with your actual token
+        "Content-Type": "application/json"
+    }
+    categories = []
+
+    # market_code 카테고리 생성
+    for market_code in market_codes:
+        categories.append({
+            "query": f"""
+                mutation createDomain {{
+                    createDomain(input: {{ 
+                        name: "{market_code}", 
+                        description: "{market_code} market category." 
+                    }})
+                }}
+                """,
+            "variables": {}
+        })
+
+    # 카테고리 생성
+    for category in categories:
+        print('>>>>>>>>>>.category: ', category)
+        response = requests.post(DATAHUB_API_URL, json=category, headers=HEADERS)
+        response_data = response.json()
+        print('>>>>>>>>>>.response_data: ', response_data)
+        if response.status_code in [200, 201]:
+            print(f"Category created successfully!")
+        else:
+            print(f"Failed to create category")
+            
 
 # 기본 DAG 설정
 default_args = {
@@ -102,8 +152,13 @@ with DAG(
     )
 
     process_and_store_task = PythonOperator(
-        task_id='process_json_and_store_to_postgres',
+        task_id='process_and_store_task',
         python_callable=preprocess_and_store_to_postgres,
     )
 
-convert_csv_to_json >> process_and_store_task
+    datahub_create_category = PythonOperator(
+        task_id='datahub_create_category',
+        python_callable=create_categories,
+    )
+
+datahub_create_category >> convert_csv_to_json >> process_and_store_task
